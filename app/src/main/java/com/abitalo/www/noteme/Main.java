@@ -4,19 +4,27 @@ import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v13.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 
-import com.abitalo.www.noteme.alarm.*;
-import com.abitalo.www.noteme.diary.*;
-import com.abitalo.www.noteme.mood.*;
+import com.abitalo.www.noteme.alarm.AlarmFragment;
+import com.abitalo.www.noteme.diary.DiaryFragment;
+import com.abitalo.www.noteme.mood.Item_Mood;
+import com.abitalo.www.noteme.mood.MoodEditorDialog;
+import com.abitalo.www.noteme.mood.MoodFragment;
 
-public class Main extends Activity {//TODO : code optimization
+public class Main extends Activity implements MoodEditorDialog.MoodEditListener{//TODO : code optimization
     private static final int TAB_INDEX_ONE = 0;
     private static final int TAB_INDEX_TWO = 1;
     private static final int TAB_INDEX_THREE = 2;
@@ -27,7 +35,7 @@ public class Main extends Activity {//TODO : code optimization
     private ImageButton alarmImage;
     private ImageButton moodImage;
     private ImageButton diaryImage;
-    private ImageButton titleLine;
+    private ImageView titleLine;
     private ViewPager mViewPager;
     private ViewPagerAdapter mViewPagerAdapter;
 
@@ -36,10 +44,28 @@ public class Main extends Activity {//TODO : code optimization
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
-
         init();
+        initDatabase();
         //setDefaultFragment();
         setViewPager();
+    }
+
+    private void initDatabase(){
+        DatabaseOpenHelper helper=new DatabaseOpenHelper(Main.this,"user.db");
+        SQLiteDatabase db=helper.getWritableDatabase();
+        Cursor cursor=db.rawQuery("select * from author", null);
+
+        if(null != cursor){
+            String[] columnNames= cursor.getColumnNames();
+            while(cursor.moveToNext()){
+                for(String name:columnNames){
+                    Log.i("info",name+" : "+cursor.getString(cursor.getColumnIndex(name)));
+                }
+            }
+            cursor.close();
+        }
+        db.close();
+        helper.close();
     }
 
     public void setViewPager() {
@@ -64,19 +90,19 @@ public class Main extends Activity {//TODO : code optimization
                     case TAB_INDEX_TWO: {
                         resetImage();
                         moodImage.setImageAlpha(255);
-                        alarmImage.setBackgroundColor(Color.parseColor("#bbdfdb"));
-                        moodImage.setBackgroundColor(Color.parseColor("#f6938d"));
-                        titleLine.setBackgroundColor(Color.parseColor("#f6938d"));
-                        diaryImage.setBackgroundColor(Color.parseColor("#bbdfdb"));
+                        alarmImage.setBackgroundColor(Color.parseColor("#a99d8d"));
+                        moodImage.setBackgroundColor(Color.parseColor("#d3cabb"));
+                        titleLine.setBackgroundColor(Color.parseColor("#d3cabb"));
+                        diaryImage.setBackgroundColor(Color.parseColor("#a99d8d"));
                         break;
                     }
                     case TAB_INDEX_THREE: {
                         resetImage();
                         diaryImage.setImageAlpha(255);
-                        alarmImage.setBackgroundColor(Color.parseColor("#ebe6b9"));
-                        moodImage.setBackgroundColor(Color.parseColor("#ebe6b9"));
-                        titleLine.setBackgroundColor(Color.parseColor("#e0bd95"));
-                        diaryImage.setBackgroundColor(Color.parseColor("#e0bd95"));
+                        alarmImage.setBackgroundColor(Color.parseColor("#a99d8d"));
+                        moodImage.setBackgroundColor(Color.parseColor("#a99d8d"));
+                        titleLine.setBackgroundColor(Color.parseColor("#d3cabb"));
+                        diaryImage.setBackgroundColor(Color.parseColor("#d3cabb"));
                         break;
                     }
                 }
@@ -89,7 +115,7 @@ public class Main extends Activity {//TODO : code optimization
         alarmImage = (ImageButton) findViewById(R.id.alarm_button);
         moodImage = (ImageButton) findViewById(R.id.mood_button);
         diaryImage = (ImageButton) findViewById(R.id.diary_button);
-        titleLine = (ImageButton) findViewById(R.id.title_line);
+        titleLine = (ImageView) findViewById(R.id.title_line);
 
         alarmImage.setImageResource(R.drawable.shi);//设置图片
         alarmImage.setImageAlpha(255);
@@ -125,20 +151,20 @@ public class Main extends Activity {//TODO : code optimization
                 mViewPager.setCurrentItem(1);
                 resetImage();
                 moodImage.setImageAlpha(255);
-                alarmImage.setBackgroundColor(Color.parseColor("#bbdfdb"));
-                moodImage.setBackgroundColor(Color.parseColor("#f6938d"));
-                titleLine.setBackgroundColor(Color.parseColor("#f6938d"));
-                diaryImage.setBackgroundColor(Color.parseColor("#bbdfdb"));
+                alarmImage.setBackgroundColor(Color.parseColor("#a99d8d"));
+                moodImage.setBackgroundColor(Color.parseColor("#d3cabb"));
+                titleLine.setBackgroundColor(Color.parseColor("#d3cabb"));
+                diaryImage.setBackgroundColor(Color.parseColor("#a99d8d"));
                 break;
             }
             case R.id.tab_diary: {
                 mViewPager.setCurrentItem(2);
                 resetImage();
                 diaryImage.setImageAlpha(255);
-                alarmImage.setBackgroundColor(Color.parseColor("#ebe6b9"));
-                moodImage.setBackgroundColor(Color.parseColor("#ebe6b9"));
-                titleLine.setBackgroundColor(Color.parseColor("#e0bd95"));
-                diaryImage.setBackgroundColor(Color.parseColor("#e0bd95"));
+                alarmImage.setBackgroundColor(Color.parseColor("#a99d8d"));
+                moodImage.setBackgroundColor(Color.parseColor("#a99d8d"));
+                titleLine.setBackgroundColor(Color.parseColor("#d3cabb"));
+                diaryImage.setBackgroundColor(Color.parseColor("#d3cabb"));
                 break;
             }
         }
@@ -149,6 +175,11 @@ public class Main extends Activity {//TODO : code optimization
         alarmImage.setImageAlpha(100);
         moodImage.setImageAlpha(100);
         diaryImage.setImageAlpha(100);
+    }
+
+    @Override
+    public void moodEditComplete(Item_Mood newItem) {
+        moodFragment.update(newItem);
     }
 
     public class ViewPagerAdapter extends FragmentPagerAdapter {
